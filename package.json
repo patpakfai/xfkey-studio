@@ -1,0 +1,19 @@
+{
+  "name": "xfkey-studio",
+  "version": "1.0.0",
+  "description": "Mac-friendly web configurator for XFKEY (VID 0xAF88 / PID 0x6688) USB macro pads, using WebHID.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/",
+    "cli": "node tools/xfkey.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "node-hid": "^3.1.0"
+  }
+}
