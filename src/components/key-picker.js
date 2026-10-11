@@ -16,7 +16,7 @@ function matches(k, q) {
  * Modal key list. In combo mode a pick closes the dialog; in macro mode it stays
  * open so several steps can be added, and offers Shift + modifier steps.
  */
-export function KeyPicker({ title, macro = false, exclude = [], onPick, onClose }) {
+export function KeyPicker({ title, macro = false, modsCombine = false, exclude = [], onPick, onClose }) {
   const dialog = useRef(null);
   const [query, setQuery] = useState('');
   const [shift, setShift] = useState(false);
@@ -72,7 +72,7 @@ export function KeyPicker({ title, macro = false, exclude = [], onPick, onClose 
       <div class="picker-body">
         ${mods.length > 0 && html`
           <section>
-            <h3>Modifiers <span class="muted">— tapped on their own</span></h3>
+            <h3>Modifiers <span class="muted">— ${modsCombine ? 'held for the next key' : 'tapped on their own'}</span></h3>
             <div class="picker-grid">
               ${mods.map((m) => html`
                 <button type="button" class="pick" onClick=${() => pick(macroModStep(m.bit))}>

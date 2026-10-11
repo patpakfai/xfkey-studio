@@ -50,17 +50,20 @@ const PRESETS = [
 
 const sameCombo = (a, b) => !!a && a.mods === b.mods && a.keys.join() === b.keys.join();
 
-export function ShortcutEditor({ action, onChange, ble }) {
+export function ShortcutEditor({ action, onChange, caps }) {
   const hasRelease = action.release !== null;
+  // Still shown on pads without it when a profile set it, so it can be turned off.
+  const offerRelease = caps.release || hasRelease;
 
   return html`
     <div class="stack">
       <div class="field">
         <span class="field-label">When pressed</span>
-        <${ComboEditor} label="When pressed" combo=${action.press} onChange=${(press) => onChange({ ...action, press })} />
+        <${ComboEditor} label="When pressed" combo=${action.press} maxKeys=${caps.comboKeys}
+          onChange=${(press) => onChange({ ...action, press })} />
       </div>
 
-      ${!ble && html`
+      ${offerRelease && html`
         <div class="field">
           <label class="check">
             <input type="checkbox" checked=${hasRelease}
@@ -70,7 +73,7 @@ export function ShortcutEditor({ action, onChange, ble }) {
           ${hasRelease && html`
             <div class="nested">
               <span class="field-label">When released</span>
-              <${ComboEditor} label="When released" combo=${action.release}
+              <${ComboEditor} label="When released" combo=${action.release} maxKeys=${caps.comboKeys}
                 onChange=${(release) => onChange({ ...action, release })} />
             </div>`}
         </div>`}

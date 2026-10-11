@@ -1,9 +1,9 @@
-// Profiles: what we last wrote to each pad (the pad can't report its own
-// settings), plus JSON export/import.
+// Profiles: what we last wrote to each XFKEY pad (it can't report its own
+// settings), plus JSON export/import for every family.
 
 import { stepsToText } from './hid-usages.js';
-import { actionProblems, LightMode, MAX_COMBO_KEYS } from './protocol.js';
-import { slotCount } from './models.js';
+import { LightMode, MAX_COMBO_KEYS } from './protocol.js';
+import { actionProblemsFor, slotCount } from './models.js';
 
 const PREFIX = 'xfkey-studio:v1:';
 const FILE_FORMAT = 'xfkey-studio-profile';
@@ -75,6 +75,12 @@ export function sanitizeAction(raw) {
     }
     case 'special':
       return { type: 'special', code: toInt(raw.code, 0, 255, 6) };
+    case 'raw': {
+      // A CH57x record we can't edit, kept byte for byte.
+      const bytes = Array.isArray(raw.bytes) ? raw.bytes : [];
+      const valid = bytes.length >= 3 && bytes.length <= 61 && bytes.every((b) => Number.isInteger(b) && b >= 0 && b < 256);
+      return valid ? { type: 'raw', bytes: [...bytes] } : { type: 'none' };
+    }
     default:
       return { type: 'none' };
   }
@@ -85,12 +91,12 @@ function sanitizeLighting(raw) {
   return { mode: toInt(raw?.mode, 1, 8, LightMode.RAINBOW), color };
 }
 
-/** Normalizes a stored or imported profile to this model's number of keys. */
+/** Normalizes a stored or imported profile to this model's number of keys. Pads without lights get `lighting: null`. */
 export function sanitizeProfile(raw, model) {
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.actions)) throw new Error('This file is not a pad profile.');
   const count = slotCount(model);
   const actions = Array.from({ length: count }, (_, i) => sanitizeAction(raw.actions[i]));
-  return { actions, lighting: sanitizeLighting(raw.lighting) };
+  return { actions, lighting: model.caps.lighting ? sanitizeLighting(raw.lighting) : null };
 }
 
 // ---------------------------------------------------------------------------
@@ -101,7 +107,7 @@ export function exportProfile(profile, model) {
   const data = {
     format: FILE_FORMAT,
     version: 1,
-    model: { name: model.name, keyCount: model.keyCount, variant: model.variant },
+    model: { family: model.family, name: model.name, keyCount: model.keyCount, variant: model.variant, knobCount: model.knobCount },
     lighting: profile.lighting,
     actions: profile.actions,
   };
@@ -119,11 +125,14 @@ export function importProfile(text, model) {
   if (raw?.format !== FILE_FORMAT) throw new Error("That file wasn't exported from XFKEY Studio.");
   const profile = sanitizeProfile(raw, model);
   const warnings = [];
+  if ((raw.model?.family ?? 'xfkey') !== model.family) {
+    warnings.push(`The file was made for a different kind of pad (${raw.model?.name ?? 'unknown'}).`);
+  }
   if (raw.actions.length !== profile.actions.length) {
     warnings.push(`The file has ${raw.actions.length} keys; this pad has ${profile.actions.length}.`);
   }
   profile.actions.forEach((action, i) => {
-    if (actionProblems(action, { ble: model.ble }).length) warnings.push(`Key ${i + 1} needs attention.`);
+    if (actionProblemsFor(model, action).length) warnings.push(`Key ${i + 1} needs attention.`);
   });
   return { profile, warnings };
 }

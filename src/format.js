@@ -47,6 +47,9 @@ export function summarizeAction(action) {
     }
     case 'special':
       return { main: SPECIAL.find((s) => s.code === action.code)?.label ?? 'Special', sub: 'Special' };
+    case 'raw':
+      // CH57x record type 3 is a mouse action.
+      return { main: action.bytes[0] === 3 ? 'Mouse' : 'Custom', sub: 'Set by another app' };
     default:
       return { main: '—', sub: 'No action' };
   }

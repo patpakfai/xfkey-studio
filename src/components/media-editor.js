@@ -1,6 +1,5 @@
 import { html, useState } from '../../vendor/preact-htm.js';
 import { MEDIA, MEDIA_GROUPS, mediaByUsage, SPECIAL } from '../hid-usages.js';
-import { MAX_CONSUMER_USAGE } from '../protocol.js';
 import { Icon } from '../icons.js';
 
 function OptionGrid({ label, options, isSelected, onSelect }) {
@@ -14,11 +13,12 @@ function OptionGrid({ label, options, isSelected, onSelect }) {
     </div>`;
 }
 
-export function MediaEditor({ action, onChange }) {
+export function MediaEditor({ action, onChange, maxUsage }) {
   const custom = !mediaByUsage(action.usage);
   const [hex, setHex] = useState(() => action.usage.toString(16).padStart(3, '0'));
   const parsed = /^(0x)?[0-9a-f]{1,3}$/i.test(hex.trim()) ? parseInt(hex.trim().replace(/^0x/i, ''), 16) : NaN;
-  const hexValid = parsed >= 1 && parsed <= MAX_CONSUMER_USAGE;
+  const hexValid = parsed >= 1 && parsed <= maxUsage;
+  const max = maxUsage.toString(16).toUpperCase();
 
   return html`
     <div class="stack">
@@ -44,7 +44,7 @@ export function MediaEditor({ action, onChange }) {
             </button>
           </div>
           <p id="custom-usage-msg" class=${hexValid ? 'help' : 'field-error'}>
-            ${hexValid ? 'For power users: any consumer-page usage from 001 to 23C.' : 'Enter a hex value from 001 to 23C.'}
+            ${hexValid ? `For power users: any consumer-page usage from 001 to ${max}.` : `Enter a hex value from 001 to ${max}.`}
           </p>
         </div>
       </details>

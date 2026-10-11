@@ -1,8 +1,8 @@
 import { html, useRef } from '../../vendor/preact-htm.js';
 import { Icon } from '../icons.js';
 
-/** Export / import / reset, plus the raw bytes for the curious. */
-export function ProfileCard({ onExport, onImport, onReset, packets }) {
+/** Export / import / reset or reload, plus the raw bytes for the curious. */
+export function ProfileCard({ onExport, onImport, onReset, onReload, packets }) {
   const fileInput = useRef(null);
 
   return html`
@@ -13,7 +13,8 @@ export function ProfileCard({ onExport, onImport, onReset, packets }) {
       <div class="button-row">
         <button type="button" class="btn" onClick=${onExport}><${Icon} name="download" size=${16} /> Export</button>
         <button type="button" class="btn" onClick=${() => fileInput.current.click()}><${Icon} name="upload" size=${16} /> Import</button>
-        <button type="button" class="btn" onClick=${onReset}><${Icon} name="reset" size=${16} /> Factory keys</button>
+        ${onReset && html`<button type="button" class="btn" onClick=${onReset}><${Icon} name="reset" size=${16} /> Factory keys</button>`}
+        ${onReload && html`<button type="button" class="btn" onClick=${onReload}><${Icon} name="refresh" size=${16} /> Reload from keyboard</button>`}
       </div>
       <input ref=${fileInput} type="file" accept=".json,application/json" class="visually-hidden" tabindex="-1"
         aria-hidden="true" onChange=${(e) => {

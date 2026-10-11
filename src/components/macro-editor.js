@@ -1,13 +1,14 @@
 import { html, useState } from '../../vendor/preact-htm.js';
 import { describeStep, stepsToText, textToSteps } from '../hid-usages.js';
-import { MAX_MACRO_STEPS } from '../protocol.js';
 import { Icon } from '../icons.js';
 import { KeyPicker } from './key-picker.js';
 import { NumberField } from './number-field.js';
 
-export function MacroEditor({ action, onChange, slot }) {
+/** `steps` is { used, total } on pads that count steps per key (CH57x), else null. */
+export function MacroEditor({ action, onChange, slot, caps, steps }) {
   const [picking, setPicking] = useState(false);
   const { unsupported } = action.mode === 'text' ? textToSteps(action.text) : { unsupported: [] };
+  const full = steps ? steps.used >= steps.total : action.steps.length >= caps.macroSteps;
 
   const setText = (text) => onChange({ ...action, text, steps: textToSteps(text).steps });
   const setSteps = (steps) => onChange({ ...action, steps, text: stepsToText(steps) ?? '' });
@@ -47,7 +48,8 @@ export function MacroEditor({ action, onChange, slot }) {
                 Can't type ${unsupported.map((c) => `“${c}”`).join(' ')} — the pad only types characters found on a US keyboard.
               </p>`
             : html`<p id=${`macro-text-${slot}-msg`} class="help">
-                ${action.steps.length} keystrokes. The pad presses keys, so switch macOS to the ABC / U.S. input source first —
+                ${steps ? 'Capitals and symbols that need ⇧ take two steps.' : `${action.steps.length} keystrokes.`}${' '}
+                The pad presses keys, so switch macOS to the ABC / U.S. input source first —
                 with a Chinese or Japanese input method on, the letters go into the input method instead.
               </p>`}
         </div>` : html`
@@ -66,32 +68,36 @@ export function MacroEditor({ action, onChange, slot }) {
                 </li>`;
             })}
             <li>
-              <button type="button" class="chip-add" disabled=${action.steps.length >= MAX_MACRO_STEPS}
+              <button type="button" class="chip-add" disabled=${full}
                 onClick=${() => setPicking(true)}>
                 <${Icon} name="plus" size=${14} /> Add keys
               </button>
             </li>
           </ol>
           <p class="help">
-            A modifier step (⌘, ⇧ …) is tapped on its own — it doesn't combine with the next key.
-            For a shortcut like ⌘C, use the Shortcut tab.
+            ${caps.modsCombine
+              ? 'A modifier step (⌘, ⇧ …) is held down for the next key, so ⌘ then C sends ⌘C.'
+              : "A modifier step (⌘, ⇧ …) is tapped on its own — it doesn't combine with the next key. For a shortcut like ⌘C, use the Shortcut tab."}
             ${action.steps.length > 0 && html` <button type="button" class="link-btn" onClick=${() => setSteps([])}>Clear all</button>`}
           </p>
         </div>`}
 
       <div class="field-row">
         <${NumberField} id=${`macro-interval-${slot}`} label="Delay between keys" value=${action.interval}
-          min=${0} max=${65535} suffix="ms" help="50 ms works for most apps."
+          min=${0} max=${65535} suffix="ms"
+          help=${caps.macroRepeat ? '50 ms works for most apps.' : '0 types as fast as the pad can. Delays are not tested on this pad yet.'}
           onChange=${(interval) => onChange({ ...action, interval })} />
-        <${NumberField} id=${`macro-repeat-${slot}`} label="Play it" value=${action.repeat || 1}
-          min=${1} max=${255} suffix="times" disabled=${action.repeat === 0} help="Per key press."
-          onChange=${(repeat) => onChange({ ...action, repeat })} />
+        ${caps.macroRepeat && html`
+          <${NumberField} id=${`macro-repeat-${slot}`} label="Play it" value=${action.repeat || 1}
+            min=${1} max=${255} suffix="times" disabled=${action.repeat === 0} help="Per key press."
+            onChange=${(repeat) => onChange({ ...action, repeat })} />`}
       </div>
-      <label class="check">
-        <input type="checkbox" checked=${action.repeat === 0}
-          onChange=${(e) => onChange({ ...action, repeat: e.currentTarget.checked ? 0 : 1 })} />
-        Repeat forever
-      </label>
+      ${caps.macroRepeat && html`
+        <label class="check">
+          <input type="checkbox" checked=${action.repeat === 0}
+            onChange=${(e) => onChange({ ...action, repeat: e.currentTarget.checked ? 0 : 1 })} />
+          Repeat forever
+        </label>`}
       ${action.repeat === 0 && html`
         <p class="callout callout-warn" role="note">
           <${Icon} name="alert" size=${16} />
@@ -99,7 +105,7 @@ export function MacroEditor({ action, onChange, slot }) {
         </p>`}
 
       ${picking && html`
-        <${KeyPicker} macro title="Add keys to the sequence" onClose=${() => setPicking(false)}
+        <${KeyPicker} macro title="Add keys to the sequence" modsCombine=${caps.modsCombine} onClose=${() => setPicking(false)}
           onPick=${(step) => onChange((latest) => {
             const steps = [...latest.steps, step];
             return { ...latest, steps, text: stepsToText(steps) ?? '' };

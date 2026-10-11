@@ -247,6 +247,8 @@ main {
   animation: spin 700ms linear infinite;
 }
 
+.spinner-sm { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { opacity: 0.35; } }
 
@@ -332,6 +334,9 @@ input[aria-invalid="true"], textarea[aria-invalid="true"], .is-invalid input { b
   background: var(--surface-2); color: var(--text-muted);
   font-size: 0.75rem; font-weight: 500;
 }
+.badge.is-ok { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+.badge.is-warn { background: var(--warn-soft); color: var(--warn); }
+.badge.is-muted { background: var(--surface-3); }
 
 /* ---------- the pad ---------- */
 
@@ -580,6 +585,35 @@ dialog.picker::backdrop { background: rgba(0, 0, 0, 0.35); backdrop-filter: blur
   text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   display: flex; flex-direction: column; gap: 6px;
 }
+.trouble { width: 100%; text-align: left; font-size: 0.875rem; }
+.trouble summary { cursor: pointer; color: var(--accent-text); }
+.trouble ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; color: var(--text-muted); }
+
+/* ---------- keyboards found ---------- */
+
+.devices { width: 100%; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.device-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.device {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 16px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.device.is-error { border-color: color-mix(in srgb, var(--danger) 55%, var(--border)); }
+.device-icon {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 11px;
+  background: var(--accent-soft); color: var(--accent-text);
+}
+.device-text { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.device-title { display: flex; align-items: center; flex-wrap: wrap; row-gap: 4px; }
+.device-title .badge:first-of-type { margin-left: 8px; }
+.device-line { font-size: 0.875rem; }
+.device.is-error .device-line { color: var(--danger); }
+.device-line a { color: var(--accent-text); }
+.device-meta { font: 0.75rem var(--mono); color: var(--text-muted); }
+.device-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+.step-count { margin-top: -4px; }
+.step-count.is-over { color: var(--danger); }
 
 /* ---------- toasts ---------- */
 
@@ -616,6 +650,8 @@ dialog.picker::backdrop { background: rgba(0, 0, 0, 0.35); backdrop-filter: blur
   .pad, .pad-row { gap: 10px; }
   .pad { padding: 12px; }
   .topbar-device > span:not(.status-dot) { display: none; }
+  .device-actions { width: 100%; }
+  .device-actions .btn-primary { flex: 1; }
   .check-inline { margin-left: 0; }
 }
 

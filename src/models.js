@@ -1,8 +1,15 @@
-// Pad models, identified by the INFO reply (key count + variant byte).
-// Taken from the vendor configurator's model table. `rows` lists key indexes
-// per physical row; `ble` models use the per-key Bluetooth protocol.
+// Pad models. XFKEY models are identified by the INFO reply (key count +
+// variant byte), taken from the vendor configurator's model table; CH57x models
+// are built from the key and knob count the pad reports. `rows` lists slot
+// indexes per physical row; `ble` models use the XFKEY Bluetooth protocol.
+// `caps` says what the editor may offer for the model's family.
 
-import { emptyCombo, LightMode } from './protocol.js';
+import {
+  ch57xActionProblems, CH57X_MAX_CONSUMER_USAGE, CH57X_PRODUCT_ID, CH57X_VENDOR_ID, MAX_ENTRIES, slotIds,
+} from './ch57x-protocol.js';
+import {
+  actionProblems, emptyCombo, LightMode, MAX_COMBO_KEYS, MAX_CONSUMER_USAGE, MAX_MACRO_STEPS,
+} from './protocol.js';
 
 const strip = (n) => [Array.from({ length: n }, (_, i) => i)];
 const grid = (...sizes) => {
@@ -12,7 +19,26 @@ const grid = (...sizes) => {
 
 const ARROWS = [0x52, 0x50, 0x51, 0x4f]; // Up, Left, Down, Right
 
-const model = (keyCount, variant, name, rows, extra = {}) => ({ keyCount, variant, name, rows, ble: false, ...extra });
+const XFKEY_CAPS = Object.freeze({
+  types: ['keys', 'macro', 'media', 'none'],
+  release: true,
+  lighting: true,
+  comboKeys: MAX_COMBO_KEYS,
+  macroSteps: MAX_MACRO_STEPS,
+  macroRepeat: true,
+  /** Whether a modifier step is held for the next key (CH57x) or tapped alone (XFKEY). */
+  modsCombine: false,
+  maxConsumerUsage: MAX_CONSUMER_USAGE,
+  /** Delay a new sequence starts with, in ms. */
+  defaultInterval: 50,
+  factoryReset: true,
+  readBack: false,
+});
+const XFKEY_BLE_CAPS = Object.freeze({ ...XFKEY_CAPS, types: ['keys', 'macro', 'media', 'special', 'none'], release: false });
+
+const model = (keyCount, variant, name, rows, extra = {}) => ({
+  family: 'xfkey', keyCount, variant, name, rows, ble: false, caps: extra.ble ? XFKEY_BLE_CAPS : XFKEY_CAPS, ...extra,
+});
 
 export const MODELS = [
   model(1, 17, '1-Key Pad', strip(1)),
@@ -58,6 +84,62 @@ export function modelFor({ keyCount, variant }) {
   for (let i = 0; i < count; i += 6) rows.push(Array.from({ length: Math.min(6, count - i) }, (_, j) => i + j));
   return model(count, variant, `${count}-Key Pad`, rows, { unknown: true });
 }
+
+// ---------------------------------------------------------------------------
+// CH57x pads
+// ---------------------------------------------------------------------------
+
+const CH57X_CAPS = Object.freeze({
+  types: ['keys', 'macro', 'media', 'none'],
+  release: false,
+  lighting: false,
+  comboKeys: 1,
+  /** Each entry is one step; text needs more where ⇧ is involved, see entryCount(). */
+  macroSteps: MAX_ENTRIES,
+  macroRepeat: false,
+  modsCombine: true,
+  maxConsumerUsage: CH57X_MAX_CONSUMER_USAGE,
+  // The per-step delay field isn't verified on hardware yet, so new sequences don't use it.
+  defaultInterval: 0,
+  factoryReset: false,
+  readBack: true,
+  stepBudget: MAX_ENTRIES,
+});
+
+/** Keys per row for the key counts these pads come in; others fall back to rows of 4. */
+const CH57X_ROWS = {
+  1: [1], 2: [2], 3: [3], 4: [4], 5: [5], 6: [3, 3], 8: [4, 4], 9: [3, 3, 3], 10: [5, 5],
+  11: [4, 4, 3], 12: [4, 4, 4], 15: [5, 5, 5], 16: [4, 4, 4, 4],
+};
+
+/** Layouts confirmed on real hardware with this site. */
+const CH57X_VERIFIED = new Set(['1-0']);
+
+export function ch57xModel(keys, knobs) {
+  const sizes = CH57X_ROWS[keys] ?? Array.from({ length: Math.ceil(keys / 4) }, (_, i) => Math.min(4, keys - 4 * i));
+  const rows = grid(...sizes, ...Array(knobs).fill(3));
+  const knobNames = Array.from({ length: knobs }, (_, k) => [`Knob ${k + 1} ⟲`, `Knob ${k + 1} press`, `Knob ${k + 1} ⟳`]).flat();
+  const s = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  return {
+    family: 'ch57x',
+    name: knobs ? `${keys}-Key Pad + ${s(knobs, 'knob')}` : `${keys}-Key Pad`,
+    keyCount: keys,
+    knobCount: knobs,
+    vendorId: CH57X_VENDOR_ID,
+    productId: CH57X_PRODUCT_ID,
+    rows,
+    slotCount: keys + 3 * knobs,
+    slotNames: [...Array.from({ length: keys }, (_, i) => `Key ${i + 1}`), ...knobNames],
+    slotIds: slotIds(keys, knobs),
+    ble: false,
+    verified: CH57X_VERIFIED.has(`${keys}-${knobs}`),
+    caps: CH57X_CAPS,
+  };
+}
+
+/** Problems that would make `action` unsafe to send to a pad of this model. */
+export const actionProblemsFor = (m, action) =>
+  (m.family === 'ch57x' ? ch57xActionProblems(action) : actionProblems(action, { ble: m.ble }));
 
 export const slotCount = (m) => m.slotCount ?? m.keyCount;
 export const slotName = (m, i) => m.slotNames?.[i] ?? `Key ${i + 1}`;

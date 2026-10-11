@@ -79,7 +79,8 @@ function useShortcutRecorder(active, onCapture, onDone, onUnknownKey) {
   }, [active]);
 }
 
-export function ComboEditor({ combo, onChange, label }) {
+/** `maxKeys` 1 means the pad sends one key per shortcut; picking a key then replaces it. */
+export function ComboEditor({ combo, onChange, label, maxKeys = MAX_COMBO_KEYS }) {
   const [recording, setRecording] = useState(false);
   const [picking, setPicking] = useState(false);
   const [hint, setHint] = useState('');
@@ -98,7 +99,9 @@ export function ComboEditor({ combo, onChange, label }) {
 
   const toggleMod = (bit) => onChange({ ...combo, mods: combo.mods ^ bit });
   const removeKey = (i) => onChange({ ...combo, keys: combo.keys.filter((_, j) => j !== i) });
-  const addKey = (usage) => onChange({ ...combo, keys: [...combo.keys, usage] });
+  const addKey = (usage) => onChange({ ...combo, keys: maxKeys === 1 ? [usage] : [...combo.keys, usage] });
+  const canAdd = combo.keys.length < maxKeys || maxKeys === 1;
+  const addLabel = !combo.keys.length ? 'Choose key' : maxKeys === 1 ? 'Change key' : 'Add another key';
   const startRecording = () => {
     setHint('');
     setRecording(true);
@@ -138,9 +141,9 @@ export function ComboEditor({ combo, onChange, label }) {
               <${Icon} name="x" size=${12} />
             </button>
           </span>`)}
-        ${combo.keys.length < MAX_COMBO_KEYS && html`
+        ${canAdd && html`
           <button type="button" class="chip-add" onClick=${() => setPicking(true)}>
-            <${Icon} name="plus" size=${14} /> ${combo.keys.length ? 'Add another key' : 'Choose key'}
+            <${Icon} name="plus" size=${14} /> ${addLabel}
           </button>`}
         <label class="check check-inline">
           <input type="checkbox" checked=${showRight} onChange=${(e) => setShowRight(e.currentTarget.checked)} />
